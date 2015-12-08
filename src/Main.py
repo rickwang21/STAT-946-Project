@@ -40,6 +40,9 @@ BATCH_SIZE = 128
 #Vocab (target), 1 for end of line token, 1 for not found word
 vocab = 80002
 
+#Weights file name
+weights = 'weights_simple_lstm'
+
 lasagne.random.set_rng(np.random.RandomState(1))
 
 
@@ -95,9 +98,9 @@ def main():
     input_var = T.ftensor3('inputs')
     network,train_fn,val_fn,output = Models.Create_simple_LSTM(input_var=input_var,N_HIDDEN=1000,layer=4)
     processed_batch = []
-    if(os.path.isfile('stored_weights.params')):
+    if(os.path.isfile(weights)):
         print("loading Weights")
-        params.read_model_data(network, 'stored_weights')
+        params.read_model_data(network, weights)
     if(os.path.isfile('stored_batch.p')!=True):
         if(os.path.isfile('stored_processed.p')!=True):
             print('Creating processed sentences file')
@@ -132,24 +135,26 @@ def main():
         print('Loading input and output matrix file')
         processed_batch = pickle.load(open('stored_batch.p','rb'))
     #print(ix_to_char)
+    shuffle(processed) #Shuffle Batches
     processed_test = processed[:len(processed)-500]
     processed_val = processed[len(processed)-500:]
-    for i in range(epoch):
-        shuffle(processed) #Shuffle Batches
+
+def lack_ram():
+    for i in range(epoch):     
         train_main_b = 0
         train_err = 0
         train_batches = 0
         start_time = time.time()
-        for batch in processed_test:
+        for batch in processed_test:           
             curr_batch = helpers.convert_to_vector(batch,french_vocab,char_to_ix)
             fr,eng = helpers.shift_to_input(curr_batch,0,ix_to_vector)
             train_err += train_fn(fr,eng[:,0])
             train_batches += 1
             train_main_b += 1
-            print("new batch ",train_main_b,len(processed_test))
+            #print("new batch ",train_main_b,len(processed_test))
             if(train_main_b % 2000 == 0):
-                print("saving model")
-                params.write_model_data(network, 'stored_weights')
+                print("saving model",train_main_b)
+                params.write_model_data(network, weights)
             for word in range(1,curr_batch[1].shape[1]-1):
                 #print(word)
                 #print(T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval())
@@ -157,6 +162,7 @@ def main():
                 train_err += train_fn(fr,eng[:,0])
                 train_batches += 1
 
+        params.write_model_data(network, weights)
         # And a full pass over the validation data:
         val_err = 0
         val_acc = 0
@@ -185,5 +191,64 @@ def main():
     #print(french_proccessed.shape)
     #print(english_processed)
 
+def lots_of_ram():
+    p_test = [];
+    for batch in processed_test:  
+        p_test.append(helpers.convert_to_vector(batch,french_vocab,char_to_ix))
+    p_val = [];
+    for batch in processed_val:
+        p_val.append(helpers.convert_to_vector(batch,french_vocab,char_to_ix))
+    for i in range(epoch):
+        shuffle(processed) #Shuffle Batches
+        train_main_b = 0
+        train_err = 0
+        train_batches = 0
+        start_time = time.time()
+        for curr_batch in p_test:           
+            #curr_batch = helpers.convert_to_vector(batch,french_vocab,char_to_ix)
+            fr,eng = helpers.shift_to_input(curr_batch,0,ix_to_vector)
+            train_err += train_fn(fr,eng[:,0])
+            train_batches += 1
+            train_main_b += 1
+            #print("new batch ",train_main_b,len(processed_test))
+            if(train_main_b % 2000 == 0):
+                print("saving model",train_main_b)
+                params.write_model_data(network, weights)
+            for word in range(1,curr_batch[1].shape[1]-1):
+                #print(word)
+                #print(T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval())
+                fr,eng = helpers.shift_to_input([fr,eng],word,ix_to_vector)
+                train_err += train_fn(fr,eng[:,0])
+                train_batches += 1
+
+        params.write_model_data(network, weights)
+        # And a full pass over the validation data:
+        val_err = 0
+        val_acc = 0
+        val_batches = 0
+        for curr_batch in p_val:
+            #curr_batch = helpers.convert_to_vector(batch,french_vocab,char_to_ix)
+            fr,eng = helpers.shift_to_input(curr_batch,0,ix_to_vector)
+            error,acc = val_fn(fr,eng[:,0])
+            val_err += error
+            val_acc += acc
+            val_batches += 1
+            for word in range(1,curr_batch[1].shape[1]-1):
+                fr,eng = helpers.shift_to_input([fr,eng],word,ix_to_vector)
+                error,acc = val_fn(fr,eng[:,0])
+                val_err += error
+                val_acc += acc
+                val_batches += 1
+        # Then we print the results for this epoch:
+        print("Epoch {} of {} took {:.3f}s".format(
+            epoch + 1, num_epochs, time.time() - start_time))
+        print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+        print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
+        print("  validation accuracy:\t\t{:.2f} %".format(
+            val_acc / val_batches * 100))
+        network.save_weights_to("weights")
+    #print(french_proccessed.shape)
+    #print(english_processed)
 
 main()
+lack_ram()
