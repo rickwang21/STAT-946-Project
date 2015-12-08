@@ -20,7 +20,7 @@ from random import shuffle
 epoch = 5
 
 # Number of units in the (LSTM) layers
-N_HIDDEN = 1000
+N_HIDDEN = 999
 
 # Optimization learning rate
 LEARNING_RATE = .01
