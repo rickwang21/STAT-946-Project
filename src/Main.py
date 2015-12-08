@@ -41,7 +41,7 @@ BATCH_SIZE = 128
 vocab = 80002
 
 #Weights file name
-weights = 'weights_simple_lstm'
+weights = 'stored_weights'
 
 lasagne.random.set_rng(np.random.RandomState(1))
 
@@ -94,11 +94,13 @@ def create_training_set(sentences,min_size,batch_size):
     return processed
 
 
-def main():
+def lack_ram():   
+    processed_test = []
+    processed_val = []
     input_var = T.ftensor3('inputs')
     network,train_fn,val_fn,output = Models.Create_simple_LSTM(input_var=input_var,N_HIDDEN=1000,layer=4)
-    processed_batch = []
-    if(os.path.isfile(weights)):
+    processed = []
+    if(os.path.isfile(weights+'.params')):
         print("loading Weights")
         params.read_model_data(network, weights)
     if(os.path.isfile('stored_batch.p')!=True):
@@ -121,6 +123,7 @@ def main():
         else:
             print('Loading grouped sentences')
             processed = pickle.load(open('stored_processed.p','rb'))
+            print('number of grouped sentences',len(processed))
         #print('Creating matrix file for grouped sentences')
         gc.collect()
         #pool = mp.Pool(processes=2)
@@ -135,11 +138,12 @@ def main():
         print('Loading input and output matrix file')
         processed_batch = pickle.load(open('stored_batch.p','rb'))
     #print(ix_to_char)
+    print("Shuffle and set validation set")
     shuffle(processed) #Shuffle Batches
     processed_test = processed[:len(processed)-500]
     processed_val = processed[len(processed)-500:]
-
-def lack_ram():
+    #processed_test = processed[:20]
+    #processed_val = processed[501:510]
     for i in range(epoch):     
         train_main_b = 0
         train_err = 0
@@ -151,7 +155,7 @@ def lack_ram():
             train_err += train_fn(fr,eng[:,0])
             train_batches += 1
             train_main_b += 1
-            #print("new batch ",train_main_b,len(processed_test))
+            print("new batch ",train_main_b,len(processed_test))
             if(train_main_b % 2000 == 0):
                 print("saving model",train_main_b)
                 params.write_model_data(network, weights)
@@ -182,16 +186,65 @@ def lack_ram():
                 val_batches += 1
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(
-            epoch + 1, num_epochs, time.time() - start_time))
+            i, epoch, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
         print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
         print("  validation accuracy:\t\t{:.2f} %".format(
             val_acc / val_batches * 100))
         network.save_weights_to("weights")
-    #print(french_proccessed.shape)
-    #print(english_processed)
+        #print(french_proccessed.shape)
+        #print(english_processed)
 
 def lots_of_ram():
+    processed_test = []
+    processed_val = []
+    input_var = T.ftensor3('inputs')
+    network,train_fn,val_fn,output = Models.Create_simple_LSTM(input_var=input_var,N_HIDDEN=1000,layer=4)
+    processed = []
+    if(os.path.isfile(weights+'.params')):
+        print("loading Weights")
+        params.read_model_data(network, weights)
+    if(os.path.isfile('stored_batch.p')!=True):
+        if(os.path.isfile('stored_processed.p')!=True):
+            print('Creating processed sentences file')
+            print('Loading english and french data files')
+            english_set = pd.read_csv('../data/processed_en',header=None,delimiter=',',names=['english','en_length'])
+            french_set = pd.read_csv('../data/processed_fr',header=None,delimiter=',',names=['french','fr_length'])
+            print('Combining the files')
+            combined_set = pd.concat([english_set,french_set],axis=1)
+            print('Removing Duplicates')
+            print(len(combined_set['french']))
+            combined_set = combined_set.drop_duplicates()
+            print(len(combined_set['french'])) 
+            print('Grouping sentences together by input and output sentence length')
+            processed = create_training_set(combined_set,3,100)
+            print('Store batches in a pickle file')
+            pickle.dump(processed,open('stored_processed.p','wb'))
+            gc.collect()
+        else:
+            print('Loading grouped sentences')
+            processed = pickle.load(open('stored_processed.p','rb'))
+            print('number of grouped sentences',len(processed))
+        #print('Creating matrix file for grouped sentences')
+        gc.collect()
+        #pool = mp.Pool(processes=2)
+        #processed_batch = [pool.apply_async(helpers.convert_to_vector,args=(batch,french_vocab,char_to_ix)) for batch in processed]
+        #processed_batch = [p.get() for p in processed_batch]
+        #for batch in processed:
+        #    processed_batch.append(helpers.convert_to_vector(batch,french_vocab,char_to_ix))
+        #print(len(processed_batch))
+        #print('Dumping matrix data to file')
+        #pickle.dump(processed_batch,open('stored_batch.p','wb'))
+    else:
+        print('Loading input and output matrix file')
+        processed_batch = pickle.load(open('stored_batch.p','rb'))
+    #print(ix_to_char)
+    print("Shuffle and set validation set")
+    shuffle(processed) #Shuffle Batches
+    processed_test = processed[:len(processed)-500]
+    processed_val = processed[len(processed)-500:]
+    #processed_test = processed[:20]
+    #processed_val = processed[501:510]    
     p_test = [];
     for batch in processed_test:  
         p_test.append(helpers.convert_to_vector(batch,french_vocab,char_to_ix))
@@ -199,7 +252,6 @@ def lots_of_ram():
     for batch in processed_val:
         p_val.append(helpers.convert_to_vector(batch,french_vocab,char_to_ix))
     for i in range(epoch):
-        shuffle(processed) #Shuffle Batches
         train_main_b = 0
         train_err = 0
         train_batches = 0
@@ -241,14 +293,13 @@ def lots_of_ram():
                 val_batches += 1
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(
-            epoch + 1, num_epochs, time.time() - start_time))
+            i, epoch, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
         print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
         print("  validation accuracy:\t\t{:.2f} %".format(
             val_acc / val_batches * 100))
         network.save_weights_to("weights")
-    #print(french_proccessed.shape)
-    #print(english_processed)
+        #print(french_proccessed.shape)
+        #print(english_processed)
 
-main()
 lack_ram()
