@@ -41,7 +41,7 @@ BATCH_SIZE = 128
 vocab = 80002
 
 #Weights file name
-weights = 'small_LSTM'
+weights = 'small_LSTM_actual'
 
 lasagne.random.set_rng(np.random.RandomState(1))
 
@@ -98,7 +98,7 @@ def lack_ram():
     processed_test = []
     processed_val = []
     input_var = T.ftensor3('inputs')
-    network,train_fn,val_fn,output = Models.bidirectional_LSTM(input_var=input_var,N_HIDDEN=N_HIDDEN,layer=4,vocab=vocab)
+    network,train_fn,val_fn,output = Models.Create_simple_LSTM(input_var=input_var,N_HIDDEN=N_HIDDEN,layer=4,vocab=vocab)
     processed = []
     if(os.path.isfile(weights+'.params')):
         print("loading Weights")
