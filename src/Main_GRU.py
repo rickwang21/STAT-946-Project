@@ -139,12 +139,12 @@ def lack_ram():
         processed_batch = pickle.load(open('stored_batch.p','rb'))
     #print(ix_to_char)
     print("Shuffle and set validation set")
-    shuffle(processed) #Shuffle Batches
     processed_test = processed[:len(processed)-50]
     processed_val = processed[len(processed)-50:]
     #processed_test = processed[:1]
     #processed_val = processed[501:502]
-    for i in range(epoch):     
+    for i in range(epoch):
+    	shuffle(processed_test) #Shuffle Batches     
         train_main_b = 0
         train_err = 0
         train_batches = 0
@@ -162,7 +162,7 @@ def lack_ram():
             for word in range(1,curr_batch[1].shape[1]-1):
                 #print(word)
                 #print(T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval())
-                #eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
+                eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
                 fr,eng = helpers.shift_to_input([fr,eng],word,ix_to_vector)
                 train_err += train_fn(fr,eng[:,0])
                 train_batches += 1
@@ -180,7 +180,7 @@ def lack_ram():
             val_acc += acc
             val_batches += 1
             for word in range(1,curr_batch[1].shape[1]-1):
-                #eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
+                eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
                 fr,eng = helpers.shift_to_input([fr,eng],word,ix_to_vector)
                 error,acc = val_fn(fr,eng[:,0])
                 val_err += error

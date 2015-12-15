@@ -144,7 +144,8 @@ def lack_ram():
     processed_val = processed[len(processed)-50:]
     #processed_test = processed[:1]
     #processed_val = processed[501:502]
-    for i in range(epoch):     
+    for i in range(epoch):  
+	shuffle(processed_test)   
         train_main_b = 0
         train_err = 0
         train_batches = 0

@@ -140,8 +140,8 @@ def lack_ram():
     #print(ix_to_char)
     print("Shuffle and set validation set")
     shuffle(processed) #Shuffle Batches
-    processed_test = processed[:len(processed)-500]
-    processed_val = processed[len(processed)-500:]
+    processed_test = processed[:len(processed)-50]
+    processed_val = processed[len(processed)-50:]
     #processed_test = processed[:1]
     #processed_val = processed[501:502]
     for i in range(epoch):     

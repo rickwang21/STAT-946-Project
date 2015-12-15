@@ -48,13 +48,13 @@ def list_to_word_vectors(list_of_strings,dictionary):
     return temp
 
 def word_to_idx(list_of_strings,dictionary):
-    temp = np.ones((1,len(list_of_strings)+1),dtype=np.int)*80001
+    temp = np.ones((1,len(list_of_strings)+1),dtype=np.int)*10001
     i = 0
     for word in list_of_strings:
         if word in dictionary:
             temp[0,i] = dictionary[word]
         i += 1
-    temp[0,len(list_of_strings)] = 80002
+    temp[0,len(list_of_strings)] = 10002
     return temp
 
 def shift_to_input(batch,word,ix_to_vector):
