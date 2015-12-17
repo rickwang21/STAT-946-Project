@@ -44,10 +44,11 @@ def Create_simple_GRU(N_HIDDEN=1000,GRAD_CLIP=100,vocab=80002,layer=4,LEARNING_R
     for _ in range(layer-1):
         network = lasagne.layers.GRULayer(
             network, N_HIDDEN, grad_clipping=GRAD_CLIP)
-
     network = lasagne.layers.SliceLayer(network, -1, 1)
     softmax = lasagne.nonlinearities.softmax
-
+    
+    h_out = lasagne.layers.get_output(network,input_var)
+    h_out = theano.function([input_var], h_out)
     l_out = lasagne.layers.DenseLayer(network, num_units=vocab, W = lasagne.init.Normal(), nonlinearity=softmax)
 
     target_values = T.ivector('target_out')
@@ -61,7 +62,7 @@ def Create_simple_GRU(N_HIDDEN=1000,GRAD_CLIP=100,vocab=80002,layer=4,LEARNING_R
     compute_cost = theano.function([input_var, target_values], cost, allow_input_downcast=True)
     probs = theano.function([input_var],network_output,allow_input_downcast=True)
     val_fn = theano.function([input_var, target_values], [cost, test_acc], allow_input_downcast=True)
-    return l_out, train, val_fn,network_output
+    return l_out, train, val_fn,network_output,h_out
 
 def bidirectional_LSTM(N_HIDDEN=1000,GRAD_CLIP=100,vocab=80002,layer=4,LEARNING_RATE=0.01,input_var=None):
     target_var = T.ivector('targets')

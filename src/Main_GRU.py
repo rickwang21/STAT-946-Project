@@ -45,7 +45,7 @@ weights = 'small_gru'
 
 lasagne.random.set_rng(np.random.RandomState(1))
 
-
+pd.options.display.max_colwidth = 10000
 
 char_to_ix = {}
 ix_to_char = {}
@@ -83,7 +83,7 @@ def create_training_set(sentences,min_size,batch_size):
     processed = []
     temp2 = 0
     for i in range(3,50):
-        for j in range(i-2,i+2):
+        for j in range(i-10,i+10):
             temp = sentences[(sentences['fr_length']==i) & (sentences['en_length']==j)]
             if(len(temp['english']) >= min_size):
                 #print(len(temp['english']))
@@ -162,7 +162,7 @@ def lack_ram():
             for word in range(1,curr_batch[1].shape[1]-1):
                 #print(word)
                 #print(T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval())
-                eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
+                #eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
                 fr,eng = helpers.shift_to_input([fr,eng],word,ix_to_vector)
                 train_err += train_fn(fr,eng[:,0])
                 train_batches += 1
@@ -180,7 +180,7 @@ def lack_ram():
             val_acc += acc
             val_batches += 1
             for word in range(1,curr_batch[1].shape[1]-1):
-                eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
+                #eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
                 fr,eng = helpers.shift_to_input([fr,eng],word,ix_to_vector)
                 error,acc = val_fn(fr,eng[:,0])
                 val_err += error
@@ -307,4 +307,59 @@ def lots_of_ram():
         #print(french_proccessed.shape)
         #print(english_processed)
 
-lack_ram()
+def translate():
+    processed_test = []
+    input_var = T.ftensor3('inputs')
+    network,train_fn,val_fn,output,h_out = Models.Create_simple_GRU(input_var=input_var,N_HIDDEN=N_HIDDEN,layer=4,vocab=vocab)
+    processed = []
+    if(os.path.isfile(weights+'.params')):
+        print("loading Weights")
+        params.read_model_data(network, weights)
+        english_set = pd.read_csv('../data/test_english.txt',header=None,delimiter=',',names=['english','en_length'])
+        french_set = pd.read_csv('../data/test_french.txt',header=None,delimiter=',',names=['french','fr_length'])
+        print('Combining the files')
+        combined_set = pd.concat([english_set,french_set],axis=1)
+        print('Removing Duplicates')
+        print(len(combined_set['french']))
+        combined_set = combined_set.drop_duplicates()
+        print(len(combined_set['french'])) 
+        processed = create_training_set(combined_set,1,1)
+        print('Grouping sentences together by input and output sentence length')
+        #params.write_model_data(network, weights)
+        # And a full pass over the validation data:
+        val_err = 0
+        val_acc = 0
+        start_time = time.time()
+        val_batches = 0
+        for batch in processed:
+            curr_batch = helpers.convert_to_vector(batch,french_vocab,char_to_ix)
+            fr,eng = helpers.shift_to_input(curr_batch,0,ix_to_vector)
+            np.savetxt(open('hid','ab'),h_out(fr),delimiter=',')
+            error,acc = val_fn(fr,eng[:,0])
+            val_err += error
+            val_acc += acc
+            val_batches += 1
+            length = 0
+            for word in range(1,curr_batch[0].shape[1]+2):
+                length += 1
+                eng[:,0] = T.argmax(lasagne.layers.get_output(network,fr,allow_input_downcast=True),axis=1).eval().transpose()
+                print ix_to_char[eng[0,0]],
+                fr,eng = helpers.special_shift([fr,eng],0,ix_to_vector)
+                error,acc = val_fn(fr,eng[:,0])
+                val_err += error
+                val_acc += acc
+                val_batches += 1
+            print batch['english']
+
+        # Then we print the results for this epoch:
+        print("Epoch {} of {} took {:.3f}s".format(
+            i, epoch, time.time() - start_time))
+        print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
+        print("  validation accuracy:\t\t{:.2f} %".format(
+            val_acc / val_batches * 100))
+        params.write_model_data(network, weights)
+        #print(french_proccessed.shape)
+        #print(english_processed)
+#lack_ram()
+translate()
+

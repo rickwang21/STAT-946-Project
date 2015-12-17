@@ -69,4 +69,17 @@ def shift_to_input(batch,word,ix_to_vector):
             #print(temp_eng[i,0])
    new_fr[:,:temp_fr.shape[1],:] = temp_fr[:,:,:]
    return new_fr.astype('float32'),temp_eng[:,1:]
+
+def special_shift(batch,word,ix_to_vector):
+   temp_eng = np.copy(batch[1])
+   temp_fr = np.copy(batch[0])
+   new_fr = np.ones((temp_eng.shape[0],temp_fr.shape[1]+1,300))
+   #print(new_fr.shape," ",temp_eng.shape)
+   for i in range(temp_eng.shape[0]):
+       if temp_eng[i,0] in ix_to_vector:
+            new_fr[i,temp_fr.shape[1]] = ix_to_vector[temp_eng[i,0]]
+       #else:
+            #print(temp_eng[i,0])
+   new_fr[:,:temp_fr.shape[1],:] = temp_fr[:,:,:]
+   return new_fr.astype('float32'),temp_eng[:,:]
         
