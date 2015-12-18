@@ -8,6 +8,4 @@ The primary supporting code is in helpers.py and Models.py
 Some of the remaining files may be obsolute and unused, but are saved for reference
 
 
-Ri Wang
-Maysum Panju
-Mahmood Gohari
+Ri Wang, Maysum Panju, Mahmood Gohari
